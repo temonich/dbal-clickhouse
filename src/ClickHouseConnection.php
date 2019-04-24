@@ -46,15 +46,19 @@ class ClickHouseConnection implements Connection, PingableConnection, ServerInfo
         string $password,
         AbstractPlatform $platform
     ) {
-        $this->smi2CHClient = new Smi2CHClient([
-            'host' => $params['host'] ?? 'localhost',
-            'port' => $params['port'] ?? 8123,
-            'username' => $username,
-            'password' => $password,
-            'settings' => array_merge([
-                'database' => $params['dbname'] ?? 'default',
-            ], $params['driverOptions'] ?? []),
-        ]);
+        $this->smi2CHClient = new Smi2CHClient(
+            [
+                'host'     => $params['host'] ?? 'localhost',
+                'port'     => $params['port'] ?? 8123,
+                'username' => $username,
+                'password' => $password,
+            ],
+            [
+                'settings' => array_merge([
+                    'database' => $params['dbname'] ?? 'default',
+                ], $params['driverOptions'] ?? []),
+            ]
+        );
 
         $this->platform = $platform;
     }
@@ -94,7 +98,7 @@ class ClickHouseConnection implements Connection, PingableConnection, ServerInfo
     /**
      * {@inheritDoc}
      */
-    public function exec($statement) : int
+    public function exec($statement): int
     {
         $stmt = $this->prepare($statement);
         $stmt->execute();
@@ -165,7 +169,8 @@ class ClickHouseConnection implements Connection, PingableConnection, ServerInfo
     {
         try {
             return $this->smi2CHClient->getServerVersion();
-        } catch (TransportException $exception) {
+        }
+        catch (TransportException $exception) {
             return '';
         }
     }
