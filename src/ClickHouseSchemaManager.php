@@ -17,9 +17,9 @@ namespace FOD\DBALClickHouse;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\Index;
+use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\View;
 use Doctrine\DBAL\Types\Type;
-use const CASE_LOWER;
 use function array_change_key_case;
 use function array_filter;
 use function array_key_exists;
@@ -35,6 +35,7 @@ use function stripos;
 use function strpos;
 use function strtolower;
 use function trim;
+use const CASE_LOWER;
 
 /**
  * Schema manager for the ClickHouse DBMS.
@@ -60,9 +61,25 @@ class ClickHouseSchemaManager extends AbstractSchemaManager
     }
 
     /**
+     * Returns a list of all tables in the current database.
+     *
+     * @return string[]
+     */
+    public function listTableNames()
+    {
+        $database = ($this->_conn->getParams()['stick_to_default'] ?? false) ? $this->_conn->getDatabase() : null;
+        $sql = $this->_platform->getListTablesSQL($database);
+
+        $tables = $this->_conn->fetchAll($sql);
+        $tableNames = $this->_getPortableTablesList($tables);
+
+        return $this->filterAssetNames($tableNames);
+    }
+
+    /**
      * {@inheritdoc}
      */
-    public function listTableIndexes($table) : array
+    public function listTableIndexes($table): array
     {
         $tableView = $this->_getPortableViewDefinition(['name' => $table]);
 
@@ -96,25 +113,25 @@ class ClickHouseSchemaManager extends AbstractSchemaManager
     /**
      * {@inheritdoc}
      */
-    protected function _getPortableTableColumnDefinition($tableColumn) : Column
+    protected function _getPortableTableColumnDefinition($tableColumn): Column
     {
         $tableColumn = array_change_key_case($tableColumn, CASE_LOWER);
 
-        $dbType  = $columnType = trim($tableColumn['type']);
-        $length  = null;
-        $fixed   = false;
+        $dbType = $columnType = trim($tableColumn['type']);
+        $length = null;
+        $fixed = false;
         $notnull = true;
 
         if (preg_match('/(Nullable\((\w+)\))/i', $columnType, $matches)) {
             $columnType = str_replace($matches[1], $matches[2], $columnType);
-            $notnull    = false;
+            $notnull = false;
         }
 
         if (stripos($columnType, 'fixedstring') === 0) {
             // get length from FixedString definition
             $length = preg_replace('~.*\(([0-9]*)\).*~', '$1', $columnType);
             $dbType = 'fixedstring';
-            $fixed  = true;
+            $fixed = true;
         }
 
         $unsigned = false;
@@ -122,7 +139,7 @@ class ClickHouseSchemaManager extends AbstractSchemaManager
             $unsigned = true;
         }
 
-        if (! isset($tableColumn['name'])) {
+        if (!isset($tableColumn['name'])) {
             $tableColumn['name'] = '';
         }
 
@@ -133,14 +150,14 @@ class ClickHouseSchemaManager extends AbstractSchemaManager
         }
 
         $options = [
-            'length' => $length,
-            'notnull' => $notnull,
-            'default' => $default,
-            'primary' => false,
-            'fixed' => $fixed,
-            'unsigned' => $unsigned,
+            'length'        => $length,
+            'notnull'       => $notnull,
+            'default'       => $default,
+            'primary'       => false,
+            'fixed'         => $fixed,
+            'unsigned'      => $unsigned,
             'autoincrement' => false,
-            'comment' => null,
+            'comment'       => null,
         ];
 
         return new Column(
