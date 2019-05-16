@@ -1055,9 +1055,13 @@ class ClickHousePlatform extends AbstractPlatform
     /**
      * {@inheritDoc}
      */
-    public function getListTablesSQL() : string
+    public function getListTablesSQL(string $database = null) : string
     {
-        return "SELECT database, name FROM system.tables WHERE database != 'system' AND engine != 'View'";
+        $sql = empty($database)
+            ? "SELECT database, name FROM system.tables WHERE database != 'system' AND engine != 'View'"
+            : "SELECT database, name FROM system.tables WHERE database == '$database' AND engine != 'View'";
+
+        return $sql;
     }
 
     /**
