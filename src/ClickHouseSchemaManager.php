@@ -67,7 +67,7 @@ class ClickHouseSchemaManager extends AbstractSchemaManager
      */
     public function listTableNames()
     {
-        $database = ($this->_conn->getParams()['stick_to_default'] ?? false) ? $this->_conn->getDatabase() : null;
+        $database = ($this->_conn->getParams()['dbname'] ?? false) ? $this->_conn->getDatabase() : null;
         $sql = $this->_platform->getListTablesSQL($database);
 
         $tables = $this->_conn->fetchAll($sql);
